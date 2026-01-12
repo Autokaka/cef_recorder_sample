@@ -30,6 +30,9 @@
 
 namespace fs = std::filesystem;
 
+static constexpr int kDuration = 10;   // Capture duration in seconds.
+static constexpr int kFrameRate = 30;  // Capture frame rate.
+
 class SimpleApp : public CefApp {
  public:
   void OnBeforeCommandLineProcessing(
@@ -307,7 +310,7 @@ int main(int argc, char* argv[]) {
   while (!client->GetBrowser()) {
     CefDoMessageLoopWork();
     if (std::chrono::steady_clock::now() - wait_start >
-        std::chrono::seconds(5)) {
+        std::chrono::seconds(kDuration)) {
       std::cerr << "Timed out waiting for browser creation" << std::endl;
       break;
     }
@@ -351,8 +354,8 @@ int main(int argc, char* argv[]) {
   }
 
   client->SetRecordingEnabled(true);
-  const int target_frames = 150;  // 30 fps * 5 seconds
-  const double frame_interval_ms = 1000.0 / 30.0;
+  const int target_frames = kFrameRate * kDuration;  // 30 fps * 10 seconds
+  const double frame_interval_ms = 1000.0 / kFrameRate;
   int accumulated_ms = 0;
   int safety_iters = 0;
 

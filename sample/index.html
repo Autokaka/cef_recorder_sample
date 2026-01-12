@@ -1,92 +1,392 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CEF Recorder Demo</title>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Animation</title>
+    <link
+      href="http://jssz-boss.bilibili.co/bcut_ttv_fusion/ai-ppt/daisyui@4.12.10/full.min.css"
+      rel="stylesheet"
+    />
+    <script src="http://jssz-boss.bilibili.co/bcut_ttv_fusion/ai-ppt/gsap@3.12.5/gsap.min.js"></script>
+    <script src="http://jssz-boss.bilibili.co/bcut_ttv_fusion/ai-ppt/echarts@5.5.0/echarts.min.js"></script>
+    <script src="http://jssz-boss.bilibili.co/bcut_ttv_fusion/ai-ppt/lucide@0.562.0/lucide.min.js"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        .container {
-            text-align: center;
-            color: white;
-        }
-
-        h1 {
-            font-size: 72px;
-            margin: 0;
-            animation: fadeIn 1s ease-in;
-        }
-
-        p {
-            font-size: 32px;
-            margin-top: 20px;
-            animation: fadeIn 1.5s ease-in;
-        }
-
-        .box {
-            width: 200px;
-            height: 200px;
-            background-color: rgba(255, 255, 255, 0.2);
-            margin: 50px auto;
-            border-radius: 20px;
-            animation: rotate 3s linear infinite;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes rotate {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .time {
-            font-size: 48px;
-            margin-top: 30px;
-            font-weight: bold;
-        }
+      :root {
+        --color-primary: #8b5cf6;
+        --color-secondary: #ec4899;
+        --color-accent: #2dd4bf;
+        --color-background: transparent;
+        --color-text: #ffffff;
+        --color-container: rgba(15, 23, 42, 0.85);
+        --font-family: "Montserrat", "Noto Sans SC", sans-serif;
+      }
+      body,
+      #canvas {
+        font-family: var(--font-family);
+        margin: 0;
+        padding: 0;
+      }
+      .ppt-card {
+        background-color: var(--color-container);
+        backdrop-filter: blur(12px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        border-radius: 16px;
+      }
     </style>
-</head>
-<body>
-    <div class="container">
-        <h1>CEF Recorder</h1>
-        <p>网页转视频演示</p>
-        <div class="box"></div>
-        <div class="time" id="time"></div>
+  </head>
+  <body style="margin: 0; font-family: var(--font-family)">
+    <div
+      id="canvas"
+      style="
+        width: 1920px;
+        height: 1080px;
+        position: relative;
+        overflow: hidden;
+      "
+    >
+      <!-- 底层视频播放器 -->
+      <video
+        id="bgVideo"
+        style="
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          z-index: 0;
+        "
+        muted
+        playsinline
+      ></video>
+
+      <!-- 动画 DOM 元素 -->
+      <div
+        id="leftCard"
+        class="ppt-card"
+        style="
+          position: absolute;
+          top: 50%;
+          left: 25%;
+          transform: translate(-50%, -50%);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justifycontent: center;
+          gap: 10px;
+          width: 380px;
+          height: 300px;
+          padding: 30px;
+          border-radius: 16px;
+          z-index: 2;
+          background-color: rgba(15, 23, 42, 0.85);
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(139, 92, 246, 0.3);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        "
+      >
+        <div
+          id="gdpLabel"
+          style="
+            font-size: 28px;
+            font-weight: 500;
+            text-align: center;
+            letter-spacing: 2px;
+            white-space: nowrap;
+            color: #a78bfa;
+            z-index: 3;
+          "
+        >
+          2025 H1 GDP
+        </div>
+        <div
+          id="gdpValue"
+          style="
+            font-size: 96px;
+            font-weight: 900;
+            line-height: 1;
+            text-align: center;
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+            z-index: 3;
+          "
+        >
+          5.3%
+        </div>
+        <div
+          id="trendArrow"
+          style="
+            width: 48px;
+            height: 48px;
+            margin-top: 10px;
+            color: #2dd4bf;
+            z-index: 3;
+          "
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M12 19V5" />
+            <path d="m5 12 7-7 7 7" />
+          </svg>
+        </div>
+      </div>
+
+      <div
+        id="rightCard"
+        class="ppt-card"
+        style="
+          position: absolute;
+          top: 50%;
+          left: 75%;
+          transform: translate(-50%, -50%);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justifycontent: center;
+          gap: 15px;
+          width: 380px;
+          height: 300px;
+          padding: 30px;
+          border-radius: 16px;
+          z-index: 2;
+          background-color: rgba(15, 23, 42, 0.85);
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(236, 72, 153, 0.3);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        "
+      >
+        <div
+          id="feelingLabel"
+          style="
+            font-size: 28px;
+            font-weight: 500;
+            text-align: center;
+            letter-spacing: 2px;
+            white-space: nowrap;
+            color: #f472b6;
+            z-index: 3;
+          "
+        >
+          大众体感
+        </div>
+        <div
+          id="feelingIcon"
+          style="
+            width: 80px;
+            height: 80px;
+            margin-bottom: 5px;
+            color: #f472b6;
+            z-index: 3;
+          "
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M16 16s-1.5-2-4-2-4 2-4 2" />
+            <line x1="9" x2="9.01" y1="9" y2="9" />
+            <line x1="15" x2="15.01" y1="9" y2="9" />
+          </svg>
+        </div>
+        <div
+          id="feelingValue"
+          style="
+            font-size: 56px;
+            font-weight: 700;
+            text-align: center;
+            white-space: nowrap;
+            color: #ffffff;
+            z-index: 3;
+          "
+        >
+          不太 OK
+        </div>
+      </div>
+
+      <div
+        id="centerContrast"
+        style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          z-index: 4;
+          opacity: 0;
+        "
+      >
+        <div
+          id="contrastIcon"
+          style="
+            width: 80px;
+            height: 80px;
+            color: #fbbf24;
+            filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.5));
+            z-index: 4;
+          "
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M8 3 4 7l4 4" />
+            <path d="M4 7h16" />
+            <path d="m16 21 4-4-4-4" />
+            <path d="M20 17H4" />
+          </svg>
+        </div>
+        <div
+          id="questionText"
+          style="
+            font-size: 32px;
+            font-weight: 700;
+            padding: 8px 24px;
+            border-radius: 50px;
+            margin-top: 10px;
+            white-space: nowrap;
+            color: #0f172a;
+            background-color: #fbbf24;
+            z-index: 4;
+          "
+        >
+          为何反差?
+        </div>
+      </div>
     </div>
-
     <script>
-        function updateTime() {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('zh-CN');
-            document.getElementById('time').textContent = timeStr;
-        }
+      // 初始化图标
+      lucide.createIcons();
 
-        updateTime();
-        setInterval(updateTime, 1000);
+      // 视频播放逻辑
+      const videoUrls = [
+        "https://jssz-boss.hdslb.com/bcut_ttv_fusion/ai-ppt/time_1.mp4",
+        "https://jssz-boss.hdslb.com/bcut_ttv_fusion/ai-ppt/time_2.mp4",
+        "https://jssz-boss.hdslb.com/bcut_ttv_fusion/ai-ppt/time_3.mp4",
+      ];
+
+      let currentVideoIndex = 0;
+      const bgVideo = document.getElementById("bgVideo");
+
+      function playNextVideo() {
+        if (currentVideoIndex < videoUrls.length) {
+          bgVideo.src = videoUrls[currentVideoIndex];
+          bgVideo.play();
+          currentVideoIndex++;
+        }
+      }
+
+      bgVideo.addEventListener("ended", playNextVideo);
+      if (videoUrls.length > 0) playNextVideo();
+
+      // 时间解析辅助函数
+      function parseTime(timeStr) {
+        const parts = timeStr.split(":");
+        const seconds = parseFloat(parts[2]);
+        return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + seconds;
+      }
+
+      // GSAP 动画序列
+      window.tl = gsap.timeline({ paused: false });
+
+      // Step 1: 左侧数据卡片滑入
+      window.tl.fromTo(
+        "#leftCard",
+        { x: -100, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.8, ease: "power3.out" },
+        parseTime("00:00:00.000")
+      );
+      window.tl.set("#rightCard", { opacity: 0 }, parseTime("00:00:00.000"));
+      window.tl.from(
+        "#gdpValue",
+        { scale: 0.8, opacity: 0, duration: 0.5, ease: "back.out(1.7)" },
+        parseTime("00:00:00.000") + 0.3
+      );
+      window.tl.from(
+        "#trendArrow",
+        { y: 20, opacity: 0, duration: 0.4 },
+        parseTime("00:00:00.000") + 0.6
+      );
+
+      // Step 2: 右侧体感卡片滑入
+      const step2Start = parseTime("00:00:06.524");
+      window.tl.fromTo(
+        "#rightCard",
+        { x: 100, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.8, ease: "power3.out" },
+        step2Start
+      );
+      window.tl.to(
+        "#leftCard",
+        { opacity: 0.6, filter: "grayscale(50%)", duration: 0.5 },
+        step2Start
+      );
+      window.tl.from(
+        "#feelingIcon",
+        {
+          rotation: -15,
+          scale: 0.5,
+          opacity: 0,
+          duration: 0.5,
+          ease: "elastic.out(1, 0.5)",
+        },
+        step2Start + 0.4
+      );
+
+      // Step 3: 中央冲突
+      const step3Start = parseTime("00:00:09.716");
+      window.tl.to(
+        "#centerContrast",
+        { opacity: 1, duration: 0.3 },
+        step3Start
+      );
+      window.tl.from(
+        "#contrastIcon",
+        { scale: 3, opacity: 0, duration: 0.6, ease: "expo.out" },
+        step3Start
+      );
+      window.tl.from(
+        "#questionText",
+        { y: 20, opacity: 0, duration: 0.4, ease: "power2.out" },
+        step3Start + 0.4
+      );
+      // 离场动画
+      window.tl.to(
+        "#leftCard",
+        { x: -50, opacity: 0, duration: 0.3 },
+        step3Start + 1.8
+      );
+      window.tl.to(
+        "#rightCard",
+        { x: 50, opacity: 0, duration: 0.3 },
+        step3Start + 1.8
+      );
+      window.tl.to(
+        "#centerContrast",
+        { scale: 1.5, opacity: 0, duration: 0.3 },
+        step3Start + 1.8
+      );
     </script>
-</body>
+  </body>
 </html>
