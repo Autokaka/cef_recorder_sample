@@ -82,8 +82,8 @@ int main(int argc, char* argv[]) {
   pup::RecorderConfig config{
       .url = "http://localhost:8000/",
       .output_dir = fs::current_path() / "out",
-      .width = 1280,
-      .height = 720,
+      .width = 1920,
+      .height = 1080,
       .duration = 5,
       .fps = 30,
   };

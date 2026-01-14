@@ -5,8 +5,8 @@
 set -e
 
 INPUT_DIR="${1:-.}"
-WIDTH="${2:-1280}"
-HEIGHT="${3:-720}"
+WIDTH="${2:-1920}"
+HEIGHT="${3:-1080}"
 FPS="${4:-30}"
 
 if [ ! -d "$INPUT_DIR" ]; then
