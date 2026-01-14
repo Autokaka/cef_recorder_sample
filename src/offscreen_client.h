@@ -8,7 +8,6 @@
 #include <include/cef_request_handler.h>
 #include <atomic>
 #include <filesystem>
-#include "devtools_observer.h"
 
 namespace pup {
 
@@ -55,9 +54,6 @@ class OffscreenClient final : public CefClient,
   void SetRecordingEnabled(bool enabled) { recording_enabled_ = enabled; }
   int GetFrameCount() const { return frame_id_; }
 
-  int ExecuteDevToolsMethod(const std::string& method, CefRefPtr<CefDictionaryValue> params);
-  CefRefPtr<DevToolsObserver> GetDevToolsObserver() { return devtools_observer_; }
-
  private:
   void SaveFrame(const void* buffer, int width, int height);
 
@@ -68,7 +64,6 @@ class OffscreenClient final : public CefClient,
   std::atomic<bool> load_complete_{false};
   std::atomic<bool> recording_enabled_{false};
   CefRefPtr<CefBrowser> browser_;
-  CefRefPtr<DevToolsObserver> devtools_observer_{new DevToolsObserver()};
 
   IMPLEMENT_REFCOUNTING(OffscreenClient);
   DISALLOW_COPY_AND_ASSIGN(OffscreenClient);

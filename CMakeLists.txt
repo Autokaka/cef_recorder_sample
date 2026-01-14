@@ -12,13 +12,9 @@ find_package(CEF REQUIRED)
 
 add_subdirectory(${CEF_LIBCEF_DLL_WRAPPER_PATH} libcef_dll_wrapper)
 
-add_executable(pup
-  src/main.cc
-  src/cef_app.cc
-  src/devtools_observer.cc
-  src/offscreen_client.cc
-  src/recorder.cc
-)
+file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.h")
+
+add_executable(pup ${SOURCES})
 
 target_include_directories(pup
   PRIVATE

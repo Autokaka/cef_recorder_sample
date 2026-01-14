@@ -27,7 +27,10 @@ void OffscreenClient::OnPaint([[maybe_unused]] CefRefPtr<CefBrowser> browser,
     return;
   }
   if (recording_enabled_) {
+    auto t0 = std::chrono::steady_clock::now();
     SaveFrame(buffer, w, h);
+    printf("Frame saved in %lld ms\n",
+           std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count());
   }
 }
 
@@ -56,14 +59,6 @@ void OffscreenClient::OnLoadEnd(CefRefPtr<CefBrowser> browser,
   if (frame->IsMain() && browser->IsSame(browser_)) {
     load_complete_ = true;
   }
-}
-
-int OffscreenClient::ExecuteDevToolsMethod(const std::string& method, CefRefPtr<CefDictionaryValue> params) {
-  if (auto host = browser_ ? browser_->GetHost() : nullptr) {
-    devtools_observer_->EnsureAttached(host);
-    return host->ExecuteDevToolsMethod(0, method, params);
-  }
-  return 0;
 }
 
 void OffscreenClient::SaveFrame(const void* buffer, int w, int h) {
