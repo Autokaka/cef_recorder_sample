@@ -31,8 +31,8 @@ void SimpleApp::OnBeforeCommandLineProcessing([[maybe_unused]] const CefString& 
   command_line->AppendSwitch("disable-features=TranslateUI,BlinkGenPropertyTrees");
 
   // === 视频播放支持 ===
-  command_line->AppendSwitch("enable-media-stream");                       // 启用媒体流
-  command_line->AppendSwitch("autoplay-policy=no-user-gesture-required");  // 允许自动播放
+  command_line->AppendSwitch("enable-media-stream");                                   // 启用媒体流
+  command_line->AppendSwitchWithValue("autoplay-policy", "no-user-gesture-required");  // 允许自动播放
 
   // === 内存优化 ===
   command_line->AppendSwitch("js-flags=--expose-gc");  // 暴露 GC（可选）

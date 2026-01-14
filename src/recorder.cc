@@ -56,12 +56,12 @@ bool Recorder::Record() {
   auto frame_count = 0;
   auto frame_size = static_cast<size_t>(config_.width) * config_.height * 4;
   auto host = client_->GetBrowser()->GetHost();
+  auto frame_interval = std::chrono::microseconds(1000000 / config_.fps);  // 帧间隔
 
   std::cout << "> Recording " << target_frames << " frames @ " << config_.fps << " fps...\n";
 
   client_->SetFrameCallback([&](const void* buffer, int w, int h) {
     if (frame_count >= target_frames) {
-      CefQuitMessageLoop();
       return;
     }
     if (w != config_.width || h != config_.height) {
@@ -71,9 +71,17 @@ bool Recorder::Record() {
     frame_count += 1;
   });
 
-  // 录制循环 - 依赖 CEF 的 windowless_frame_rate 自然触发 OnPaint
-  // 页面动画时间和录制帧天然对齐
-  CefRunMessageLoop();
+  // 主动驱动录制循环
+  auto last_frame_time = std::chrono::steady_clock::now();
+  while (frame_count < target_frames) {
+    CefDoMessageLoopWork();
+
+    auto now = std::chrono::steady_clock::now();
+    if (now - last_frame_time >= frame_interval) {
+      host->Invalidate(PET_VIEW);  // 强制重绘
+      last_frame_time = now;
+    }
+  }
 
   client_->SetFrameCallback(nullptr);
   writer_->Flush();
