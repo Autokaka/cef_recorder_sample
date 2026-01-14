@@ -57,7 +57,7 @@ bool Recorder::Record() {
   auto frame_size = static_cast<size_t>(config_.width) * config_.height * 4;
   auto host = client_->GetBrowser()->GetHost();
   auto frame_interval = std::chrono::milliseconds(1000 / config_.fps);
-  auto target_frame_time = now + frame_interval;
+  std::optional<std::chrono::steady_clock::time_point> target_frame_time;
 
   std::cout << "> Recording " << target_frames << " frames @ " << config_.fps << " fps...\n";
 
@@ -65,11 +65,12 @@ bool Recorder::Record() {
     if (w != config_.width || h != config_.height) {
       return;
     }
+    auto timestamp = target_frame_time.value_or(now);
     auto now = std::chrono::steady_clock::now();
-    while (target_frame_time + frame_interval <= now) {
+    while (timestamp + frame_interval <= now) {
       std::cout << "> Dropped frame " << frame_count << "\n";
       frame_count += 1;
-      target_frame_time += frame_interval;
+      timestamp += frame_interval;
     }
     if (frame_count >= target_frames) {
       return;
