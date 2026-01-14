@@ -55,8 +55,6 @@ bool Recorder::Record() {
   // 初始化虚拟时间，policy=pause 确保页面加载后暂停
   auto init_params = CefDictionaryValue::Create();
   init_params->SetString("policy", "pause");
-  init_params->SetDouble("initialVirtualTime", 0.0);
-
   auto init_id = client_->ExecuteDevToolsMethod("Emulation.setVirtualTimePolicy", init_params);
   if (!client_->WaitForDevToolsResult(init_id, 2s)) {
     std::cerr << "Failed to initialize virtual time\n";
@@ -74,11 +72,10 @@ bool Recorder::Record() {
                 << std::endl;
     }
 
-    // 推进虚拟时间并立即暂停（pause）
+    // 推进虚拟时间
     auto advance_params = CefDictionaryValue::Create();
     advance_params->SetString("policy", "advance");
     advance_params->SetDouble("budget", timestep_ms);
-
     auto advance_id = client_->ExecuteDevToolsMethod("Emulation.setVirtualTimePolicy", advance_params);
     if (!client_->WaitForDevToolsResult(advance_id, 2s)) {
       std::cerr << "Failed to advance virtual time for frame " << i << "\n";
