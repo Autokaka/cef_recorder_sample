@@ -7,7 +7,6 @@
 #include <include/cef_render_handler.h>
 #include <include/cef_request_handler.h>
 #include <atomic>
-#include <chrono>
 #include <filesystem>
 #include "devtools_observer.h"
 
@@ -57,7 +56,7 @@ class OffscreenClient final : public CefClient,
   int GetFrameCount() const { return frame_id_; }
 
   int ExecuteDevToolsMethod(const std::string& method, CefRefPtr<CefDictionaryValue> params);
-  bool WaitForDevToolsResult(int message_id, std::chrono::milliseconds timeout);
+  CefRefPtr<DevToolsObserver> GetDevToolsObserver() { return devtools_observer_; }
 
  private:
   void SaveFrame(const void* buffer, int width, int height);

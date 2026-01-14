@@ -44,10 +44,11 @@ bool Recorder::Initialize() {
 
 bool Recorder::Record() {
   using namespace std::chrono_literals;
+  auto observer = client_->GetDevToolsObserver();
 
   // 启用 Page domain
   const int page_enable_id = client_->ExecuteDevToolsMethod("Page.enable", nullptr);
-  if (!client_->WaitForDevToolsResult(page_enable_id, 2s)) {
+  if (!observer->WaitForResult(page_enable_id, 2s)) {
     std::cerr << "Failed to enable Page domain\n";
     return false;
   }
@@ -56,7 +57,7 @@ bool Recorder::Record() {
   auto init_params = CefDictionaryValue::Create();
   init_params->SetString("policy", "pause");
   auto init_id = client_->ExecuteDevToolsMethod("Emulation.setVirtualTimePolicy", init_params);
-  if (!client_->WaitForDevToolsResult(init_id, 2s)) {
+  if (!observer->WaitForResult(init_id, 2s)) {
     std::cerr << "Failed to initialize virtual time\n";
     return false;
   }
@@ -72,13 +73,19 @@ bool Recorder::Record() {
                 << std::endl;
     }
 
+    // 重置 budget 过期标志
+    observer->ResetBudgetExpired();
+
     // 推进虚拟时间
     auto advance_params = CefDictionaryValue::Create();
     advance_params->SetString("policy", "advance");
     advance_params->SetDouble("budget", timestep_ms);
     auto advance_id = client_->ExecuteDevToolsMethod("Emulation.setVirtualTimePolicy", advance_params);
-    if (!client_->WaitForDevToolsResult(advance_id, 2s)) {
+    if (!observer->WaitForResult(advance_id, 2s)) {
       std::cerr << "Failed to advance virtual time for frame " << i << "\n";
+    }
+    if (!observer->WaitForBudgetExpired(2s)) {
+      std::cerr << "Virtual time budget timeout for frame " << i << "\n";
     }
 
     // 记录当前帧数，准备捕获一帧

@@ -66,13 +66,9 @@ int OffscreenClient::ExecuteDevToolsMethod(const std::string& method, CefRefPtr<
   return 0;
 }
 
-bool OffscreenClient::WaitForDevToolsResult(int message_id, std::chrono::milliseconds timeout) {
-  return devtools_observer_->WaitForResult(message_id, timeout);
-}
-
 void OffscreenClient::SaveFrame(const void* buffer, int w, int h) {
   auto image = CefImage::CreateImage();
-  const auto pixel_data_size = static_cast<size_t>(w) * h * 4;
+  auto pixel_data_size = static_cast<size_t>(w) * h * 4;
 
   if (!image->AddBitmap(1.0f, w, h, CEF_COLOR_TYPE_BGRA_8888, CEF_ALPHA_TYPE_PREMULTIPLIED, buffer, pixel_data_size)) {
     return;

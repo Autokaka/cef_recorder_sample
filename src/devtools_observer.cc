@@ -37,4 +37,29 @@ void DevToolsObserver::OnDevToolsMethodResult([[maybe_unused]] CefRefPtr<CefBrow
   results_[message_id] = success;
 }
 
+void DevToolsObserver::OnDevToolsEvent([[maybe_unused]] CefRefPtr<CefBrowser> browser,
+                                       const CefString& method,
+                                       [[maybe_unused]] const void* params,
+                                       [[maybe_unused]] size_t params_size) {
+  if (method == "Emulation.virtualTimeBudgetExpired") {
+    budget_expired_ = true;
+  }
+}
+
+void DevToolsObserver::ResetBudgetExpired() {
+  budget_expired_ = false;
+}
+
+bool DevToolsObserver::WaitForBudgetExpired(std::chrono::milliseconds timeout) {
+  auto deadline = std::chrono::steady_clock::now() + timeout;
+
+  while (std::chrono::steady_clock::now() < deadline) {
+    if (budget_expired_) {
+      return true;
+    }
+    CefDoMessageLoopWork();
+  }
+  return false;
+}
+
 }  // namespace pup
