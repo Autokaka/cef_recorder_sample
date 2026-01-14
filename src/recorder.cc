@@ -51,12 +51,13 @@ bool Recorder::WaitForLoad() {
 }
 
 bool Recorder::Record() {
+  auto now = std::chrono::steady_clock::now();
   auto target_frames = config_.duration * config_.fps;
   auto frame_count = 0;
   auto frame_size = static_cast<size_t>(config_.width) * config_.height * 4;
   auto host = client_->GetBrowser()->GetHost();
 
-  std::cout << "Recording " << target_frames << " frames @ " << config_.fps << " fps...\n";
+  std::cout << "> Recording " << target_frames << " frames @ " << config_.fps << " fps...\n";
 
   client_->SetFrameCallback([&](const void* buffer, int w, int h) {
     if (frame_count >= target_frames) {
@@ -76,7 +77,11 @@ bool Recorder::Record() {
 
   client_->SetFrameCallback(nullptr);
   writer_->Flush();
-  std::cout << "Wrote " << writer_->GetWrittenCount() << " frames.\n";
+
+  auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - now).count();
+  std::cout << "> Total frame time: " << diff << "ms\n";
+  std::cout << "> Average frame time: " << diff / frame_count << "ms\n";
+  std::cout << "> Total frames recorded: " << writer_->GetWrittenCount() << "\n";
 
   return frame_count == target_frames;
 }
