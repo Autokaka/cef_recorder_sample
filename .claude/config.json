@@ -1,0 +1,8 @@
+{
+  "autoApprove": true,
+  "permissions": {
+    "bash": "allow",
+    "fileWrite": "allow",
+    "fileRead": "allow"
+  }
+}
