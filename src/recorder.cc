@@ -57,11 +57,12 @@ bool Recorder::Record() {
 
   // 设置帧回调
   client_->SetFrameCallback([this, frame_size](const void* buffer, int w, int h) {
-    if (frame_count_ >= target_frames_)
+    if (frame_count_ >= target_frames_) {
       return;
-    if (w != config_.width || h != config_.height)
+    }
+    if (w != config_.width || h != config_.height) {
       return;
-
+    }
     writer_->Write(frame_count_, buffer, frame_size);
     frame_count_++;
   });
@@ -82,7 +83,7 @@ bool Recorder::Record() {
 
     CefDoMessageLoopWork();
 
-    if (now - start > std::chrono::seconds(config_.duration + 5)) {
+    if (now - start > std::chrono::seconds(config_.duration + 1)) {
       std::cerr << "Recording timeout at frame " << frame_count_ << "\n";
       break;
     }
