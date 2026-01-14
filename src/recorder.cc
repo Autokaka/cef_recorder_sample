@@ -19,7 +19,7 @@ bool Recorder::Initialize() {
   CefBrowserSettings settings;
   settings.windowless_frame_rate = config_.fps;
 
-  CefBrowserHost::CreateBrowser(window_info, client_.get(), config_.url, settings, nullptr, nullptr);
+  CefBrowserHost::CreateBrowser(window_info, client_, config_.url, settings, nullptr, nullptr);
 
   return WaitForBrowser() && WaitForLoad();
 }
@@ -51,7 +51,7 @@ bool Recorder::WaitForLoad() {
 bool Recorder::Record() {
   target_frames_ = config_.duration * config_.fps;
   frame_count_ = 0;
-  const size_t frame_size = static_cast<size_t>(config_.width) * config_.height * 4;
+  auto frame_size = static_cast<size_t>(config_.width) * config_.height * 4;
 
   std::cout << "Recording " << target_frames_ << " frames @ " << config_.fps << " fps...\n";
 
@@ -67,23 +67,15 @@ bool Recorder::Record() {
     frame_count_++;
   });
 
-  // 录制循环
-  auto host = client_->GetBrowser()->GetHost();
+  // 录制循环 - 依赖 CEF 的 windowless_frame_rate 自然触发 OnPaint
+  // 页面动画时间和录制帧天然对齐
   auto start = std::chrono::steady_clock::now();
-  auto frame_interval = std::chrono::microseconds(1000000 / config_.fps);
-  auto next_frame = start;
+  auto timeout = std::chrono::seconds(config_.duration * 3 + 1);
 
   while (frame_count_ < target_frames_) {
-    auto now = std::chrono::steady_clock::now();
-
-    if (now >= next_frame) {
-      host->Invalidate(PET_VIEW);
-      next_frame += frame_interval;
-    }
-
     CefDoMessageLoopWork();
 
-    if (now - start > std::chrono::seconds(config_.duration + 1)) {
+    if (std::chrono::steady_clock::now() - start > timeout) {
       std::cerr << "Recording timeout at frame " << frame_count_ << "\n";
       break;
     }
