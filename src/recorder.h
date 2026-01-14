@@ -35,10 +35,6 @@ class Recorder {
   RecorderConfig config_;
   CefRefPtr<OffscreenClient> client_;
   std::unique_ptr<FrameWriter> writer_;
-
-  // 录制状态
-  int frame_count_ = 0;
-  int target_frames_ = 0;
 };
 
 }  // namespace pup
