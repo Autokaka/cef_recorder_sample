@@ -90,7 +90,6 @@ bool Recorder::Record() {
     // 手动触发渲染
     client_->SetRecordingEnabled(true);
     auto host = client_->GetBrowser()->GetHost();
-    host->Invalidate(PET_VIEW);
     host->SendExternalBeginFrame();
 
     // 等待一帧被捕获（只要帧数增加1即可）
