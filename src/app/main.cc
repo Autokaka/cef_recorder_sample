@@ -79,11 +79,14 @@ bool InitializeCEF(int argc, char* argv[]) {
   }
 
   CefSettings settings;
-  settings.windowless_rendering_enabled = true;  // 必须开启
+  settings.windowless_rendering_enabled = true;
   settings.no_sandbox = true;
+  // settings.persist_session_cookies = true;
 
-  auto cache_root = fs::current_path() / "cef_cache_root";
-  auto cache_path = cache_root / "default";
+  // 缓存存储在 .app 同级目录下的 cache (必须是绝对路径)
+  fs::path app_path = fs::absolute(fs::path(argv[0])).parent_path().parent_path().parent_path();
+  fs::path cache_root = app_path / "cache";
+  fs::path cache_path = cache_root / "default";
   fs::create_directories(cache_path);
   CefString(&settings.root_cache_path) = cache_root.u8string();
   CefString(&settings.cache_path) = cache_path.u8string();

@@ -51,7 +51,7 @@ bool Recorder::WaitForLoad() {
 }
 
 bool Recorder::Record() {
-  auto now = std::chrono::steady_clock::now();
+  auto record_start_time = std::chrono::steady_clock::now();
   auto target_frames = config_.duration * config_.fps;
   auto frame_count = 0;
   auto frame_size = static_cast<size_t>(config_.width) * config_.height * 4;
@@ -65,8 +65,8 @@ bool Recorder::Record() {
     if (w != config_.width || h != config_.height) {
       return;
     }
-    auto timestamp = target_frame_time.value_or(now);
     auto now = std::chrono::steady_clock::now();
+    auto timestamp = target_frame_time.value_or(now);
     while (timestamp + frame_interval <= now) {
       std::cout << "> Dropped frame " << frame_count << "\n";
       frame_count += 1;
@@ -77,7 +77,7 @@ bool Recorder::Record() {
     }
     writer_->Submit(buffer, frame_count, frame_size);
     frame_count += 1;
-    target_frame_time = now + frame_interval;
+    target_frame_time = timestamp + frame_interval;
     host->Invalidate(PET_VIEW);
   });
 
@@ -89,7 +89,8 @@ bool Recorder::Record() {
   client_->SetFrameCallback(nullptr);
   writer_->Flush();
 
-  auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - now).count();
+  auto elapsed = std::chrono::steady_clock::now() - record_start_time;
+  auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
   std::cout << "> Total frames recorded: " << writer_->GetWrittenCount() << "\n";
   std::cout << "> Total frame time: " << diff << "ms\n";
   std::cout << "> Average frame time: " << diff / frame_count << "ms\n";
