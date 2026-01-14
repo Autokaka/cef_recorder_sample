@@ -1,17 +1,10 @@
 #include "offscreen_client.h"
 #include <include/cef_app.h>
-#include <include/cef_image.h>
 #include <include/wrapper/cef_helpers.h>
-#include <fstream>
-#include <iomanip>
-#include <sstream>
 
 namespace pup {
 
-OffscreenClient::OffscreenClient(std::filesystem::path output_dir, int width, int height)
-    : output_dir_(std::move(output_dir)), width_(width), height_(height) {
-  std::filesystem::create_directories(output_dir_);
-}
+OffscreenClient::OffscreenClient(int width, int height) : width_(width), height_(height) {}
 
 void OffscreenClient::GetViewRect([[maybe_unused]] CefRefPtr<CefBrowser> browser, CefRect& rect) {
   rect = CefRect(0, 0, width_, height_);
@@ -26,12 +19,24 @@ void OffscreenClient::OnPaint([[maybe_unused]] CefRefPtr<CefBrowser> browser,
   if (type != PET_VIEW || !buffer) {
     return;
   }
-  if (recording_enabled_) {
-    auto t0 = std::chrono::steady_clock::now();
-    SaveFrame(buffer, w, h);
-    printf("Frame saved in %lld ms\n",
-           std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count());
+
+  // 只有在录制状态且未达到目标帧数时才处理
+  if (recording_enabled_ && frame_id_ < target_frames_) {
+    int current_frame = frame_id_.fetch_add(1);
+
+    // 通过回调将帧数据传递给外部处理
+    if (frame_callback_) {
+      frame_callback_(buffer, w, h, current_frame);
+    }
+
+    // 录制完成后自动停止
+    if (current_frame + 1 >= target_frames_) {
+      recording_enabled_ = false;
+    }
   }
+
+  // 标记当前帧已完成
+  frame_ready_ = true;
 }
 
 void OffscreenClient::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
@@ -61,31 +66,16 @@ void OffscreenClient::OnLoadEnd(CefRefPtr<CefBrowser> browser,
   }
 }
 
-void OffscreenClient::SaveFrame(const void* buffer, int w, int h) {
-  auto image = CefImage::CreateImage();
-  auto pixel_data_size = static_cast<size_t>(w) * h * 4;
+void OffscreenClient::StartRecording(int target_frames, FrameCallback callback) {
+  frame_id_ = 0;
+  target_frames_ = target_frames;
+  frame_callback_ = std::move(callback);
+  recording_enabled_ = true;
+}
 
-  if (!image->AddBitmap(1.0f, w, h, CEF_COLOR_TYPE_BGRA_8888, CEF_ALPHA_TYPE_PREMULTIPLIED, buffer, pixel_data_size)) {
-    return;
-  }
-
-  int png_w = 0, png_h = 0;
-  auto png = image->GetAsPNG(1.0f, true, png_w, png_h);
-  if (!png) {
-    return;
-  }
-
-  std::vector<unsigned char> data(png->GetSize());
-  if (!png->GetData(data.data(), data.size(), 0)) {
-    return;
-  }
-
-  std::ostringstream filename;
-  filename << "frame-" << std::setw(4) << std::setfill('0') << frame_id_.fetch_add(1) << ".png";
-
-  const auto path = output_dir_ / filename.str();
-  std::ofstream file(path, std::ios::binary | std::ios::trunc);
-  file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
+void OffscreenClient::StopRecording() {
+  recording_enabled_ = false;
+  frame_callback_ = nullptr;
 }
 
 }  // namespace pup

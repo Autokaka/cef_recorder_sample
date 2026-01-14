@@ -7,9 +7,13 @@
 #include <include/cef_render_handler.h>
 #include <include/cef_request_handler.h>
 #include <atomic>
-#include <filesystem>
+#include <functional>
+#include <memory>
 
 namespace pup {
+
+// 帧回调函数类型: (buffer, width, height, frame_id)
+using FrameCallback = std::function<void(const void*, int, int, int)>;
 
 class OffscreenClient final : public CefClient,
                               public CefLifeSpanHandler,
@@ -17,7 +21,7 @@ class OffscreenClient final : public CefClient,
                               public CefRequestHandler,
                               public CefLoadHandler {
  public:
-  OffscreenClient(std::filesystem::path output_dir, int width, int height);
+  OffscreenClient(int width, int height);
 
   // CefClient
   CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override { return this; }
@@ -51,18 +55,28 @@ class OffscreenClient final : public CefClient,
   // Public API
   CefRefPtr<CefBrowser> GetBrowser() const { return browser_; }
   bool IsLoadComplete() const { return load_complete_; }
-  void SetRecordingEnabled(bool enabled) { recording_enabled_ = enabled; }
+
+  // 录制控制
+  void StartRecording(int target_frames, FrameCallback callback);
+  void StopRecording();
+  bool IsRecording() const { return recording_enabled_; }
   int GetFrameCount() const { return frame_id_; }
+  int GetTargetFrames() const { return target_frames_; }
+  bool IsRecordingComplete() const { return frame_id_ >= target_frames_ && target_frames_ > 0; }
+
+  // 帧同步（用于 external begin frame 模式）
+  bool IsFrameReady() const { return frame_ready_; }
+  void ResetFrameReady() { frame_ready_ = false; }
 
  private:
-  void SaveFrame(const void* buffer, int width, int height);
-
-  std::filesystem::path output_dir_;
   int width_;
   int height_;
   std::atomic<int> frame_id_{0};
+  std::atomic<int> target_frames_{0};
   std::atomic<bool> load_complete_{false};
   std::atomic<bool> recording_enabled_{false};
+  std::atomic<bool> frame_ready_{false};  // 当前帧已完成
+  FrameCallback frame_callback_;
   CefRefPtr<CefBrowser> browser_;
 
   IMPLEMENT_REFCOUNTING(OffscreenClient);
