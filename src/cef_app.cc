@@ -9,6 +9,7 @@ void SimpleApp::OnBeforeCommandLineProcessing([[maybe_unused]] const CefString& 
 
   // === 禁用不需要的功能 ===
   command_line->AppendSwitch("disable-sync");                            // 禁用同步
+  command_line->AppendSwitch("disable-background-networking");           // 禁用后台网络
   command_line->AppendSwitch("disable-component-update");                // 禁用组件更新
   command_line->AppendSwitch("disable-default-apps");                    // 禁用默认应用
   command_line->AppendSwitch("disable-extensions");                      // 禁用扩展
@@ -30,9 +31,7 @@ void SimpleApp::OnBeforeCommandLineProcessing([[maybe_unused]] const CefString& 
   command_line->AppendSwitch("disable-features=TranslateUI,BlinkGenPropertyTrees");
 
   // === 视频播放支持 ===
-  command_line->AppendSwitchWithValue("autoplay-policy", "no-user-gesture-required");  // 允许自动播放
-  command_line->AppendSwitch("enable-features=PlatformHEVCDecoderSupport");            // HEVC 支持
-  command_line->AppendSwitch("enable-accelerated-video-decode");                       // 硬件视频解码
+  command_line->AppendSwitchWithValue("autoplay-policy", "no-user-gesture-required");  // 允许自动播放 // 硬件视频解码
 
   // === 内存优化 ===
   command_line->AppendSwitch("js-flags=--expose-gc");  // 暴露 GC（可选）
