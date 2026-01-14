@@ -13,11 +13,12 @@ struct RecorderConfig {
   std::filesystem::path output_dir;
   int width = 1280;
   int height = 720;
-  int duration = 5;        // 录制时长（秒）
-  int fps = 30;            // 帧率
-  int writer_threads = 2;  // 异步写入线程数
+  int duration = 5;  // 秒
+  int fps = 30;
 };
 
+/// 录屏控制器
+/// 职责: 协调 CEF 浏览器和帧写入器，管理录制流程
 class Recorder {
  public:
   explicit Recorder(RecorderConfig config);
@@ -28,9 +29,16 @@ class Recorder {
   void Shutdown();
 
  private:
+  bool WaitForBrowser();
+  bool WaitForLoad();
+
   RecorderConfig config_;
   CefRefPtr<OffscreenClient> client_;
-  std::unique_ptr<FrameWriter> frame_writer_;
+  std::unique_ptr<FrameWriter> writer_;
+
+  // 录制状态
+  int frame_count_ = 0;
+  int target_frames_ = 0;
 };
 
 }  // namespace pup

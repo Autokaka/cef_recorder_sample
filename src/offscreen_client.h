@@ -8,13 +8,14 @@
 #include <include/cef_request_handler.h>
 #include <atomic>
 #include <functional>
-#include <memory>
 
 namespace pup {
 
-// 帧回调函数类型: (buffer, width, height, frame_id)
-using FrameCallback = std::function<void(const void*, int, int, int)>;
+/// 帧数据回调: (buffer, width, height)
+using OnFrameCallback = std::function<void(const void*, int, int)>;
 
+/// 离屏渲染 CEF 客户端
+/// 职责: 管理 CEF 浏览器生命周期，接收渲染帧并通过回调传递
 class OffscreenClient final : public CefClient,
                               public CefLifeSpanHandler,
                               public CefRenderHandler,
@@ -22,6 +23,13 @@ class OffscreenClient final : public CefClient,
                               public CefLoadHandler {
  public:
   OffscreenClient(int width, int height);
+
+  /// 设置帧回调（每次 OnPaint 时调用）
+  void SetFrameCallback(OnFrameCallback callback) { frame_callback_ = std::move(callback); }
+
+  /// 浏览器状态
+  CefRefPtr<CefBrowser> GetBrowser() const { return browser_; }
+  bool IsLoaded() const { return loaded_; }
 
   // CefClient
   CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override { return this; }
@@ -52,31 +60,11 @@ class OffscreenClient final : public CefClient,
   // CefLoadHandler
   void OnLoadEnd(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, int httpStatusCode) override;
 
-  // Public API
-  CefRefPtr<CefBrowser> GetBrowser() const { return browser_; }
-  bool IsLoadComplete() const { return load_complete_; }
-
-  // 录制控制
-  void StartRecording(int target_frames, FrameCallback callback);
-  void StopRecording();
-  bool IsRecording() const { return recording_enabled_; }
-  int GetFrameCount() const { return frame_id_; }
-  int GetTargetFrames() const { return target_frames_; }
-  bool IsRecordingComplete() const { return frame_id_ >= target_frames_ && target_frames_ > 0; }
-
-  // 帧同步（用于 external begin frame 模式）
-  bool IsFrameReady() const { return frame_ready_; }
-  void ResetFrameReady() { frame_ready_ = false; }
-
  private:
   int width_;
   int height_;
-  std::atomic<int> frame_id_{0};
-  std::atomic<int> target_frames_{0};
-  std::atomic<bool> load_complete_{false};
-  std::atomic<bool> recording_enabled_{false};
-  std::atomic<bool> frame_ready_{false};  // 当前帧已完成
-  FrameCallback frame_callback_;
+  std::atomic<bool> loaded_{false};
+  OnFrameCallback frame_callback_;
   CefRefPtr<CefBrowser> browser_;
 
   IMPLEMENT_REFCOUNTING(OffscreenClient);
