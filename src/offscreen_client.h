@@ -6,19 +6,19 @@
 #include <include/cef_load_handler.h>
 #include <include/cef_render_handler.h>
 #include <include/cef_request_handler.h>
-#include "devtools_observer.h"
 #include <atomic>
 #include <chrono>
 #include <filesystem>
+#include "devtools_observer.h"
 
 namespace pup {
 
 class OffscreenClient final : public CefClient,
-                               public CefLifeSpanHandler,
-                               public CefRenderHandler,
-                               public CefRequestHandler,
-                               public CefLoadHandler {
-public:
+                              public CefLifeSpanHandler,
+                              public CefRenderHandler,
+                              public CefRequestHandler,
+                              public CefLoadHandler {
+ public:
   OffscreenClient(std::filesystem::path output_dir, int width, int height);
 
   // CefClient
@@ -48,9 +48,7 @@ public:
                           CefRefPtr<CefCallback> callback) override;
 
   // CefLoadHandler
-  void OnLoadEnd(CefRefPtr<CefBrowser> browser,
-                 CefRefPtr<CefFrame> frame,
-                 int httpStatusCode) override;
+  void OnLoadEnd(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, int httpStatusCode) override;
 
   // Public API
   CefRefPtr<CefBrowser> GetBrowser() const { return browser_; }
@@ -59,11 +57,10 @@ public:
   int GetFrameCount() const { return frame_id_; }
   bool WaitForFrameCount(int target, std::chrono::milliseconds timeout) const;
 
-  int ExecuteDevToolsMethod(const std::string& method,
-                            CefRefPtr<CefDictionaryValue> params);
+  int ExecuteDevToolsMethod(const std::string& method, CefRefPtr<CefDictionaryValue> params);
   bool WaitForDevToolsResult(int message_id, std::chrono::milliseconds timeout);
 
-private:
+ private:
   void SaveFrame(const void* buffer, int width, int height);
 
   std::filesystem::path output_dir_;

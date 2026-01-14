@@ -10,7 +10,7 @@
 namespace pup {
 
 class DevToolsObserver final : public CefDevToolsMessageObserver {
-public:
+ public:
   DevToolsObserver() = default;
 
   void EnsureAttached(CefRefPtr<CefBrowserHost> host);
@@ -22,7 +22,7 @@ public:
                               const void* result,
                               size_t result_size) override;
 
-private:
+ private:
   std::mutex mutex_;
   std::unordered_map<int, bool> results_;
   CefRefPtr<CefRegistration> registration_;

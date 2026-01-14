@@ -1,12 +1,12 @@
 #include <include/base/cef_build.h>
 #include <include/cef_app.h>
 #include <include/wrapper/cef_library_loader.h>
-#include "cef_app.h"
-#include "recorder.h"
 #include <filesystem>
 #include <iostream>
 #include <optional>
 #include <system_error>
+#include "cef_app.h"
+#include "recorder.h"
 
 namespace fs = std::filesystem;
 
@@ -39,8 +39,7 @@ bool InitializeCEF(int argc, char* argv[]) {
   CefRefPtr<CefApp> app = new pup::SimpleApp();
 
   // Handle subprocess execution
-  if (const int exit_code = CefExecuteProcess(main_args, app, nullptr);
-      exit_code >= 0) {
+  if (const int exit_code = CefExecuteProcess(main_args, app, nullptr); exit_code >= 0) {
     std::exit(exit_code);
   }
 

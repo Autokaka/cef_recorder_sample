@@ -5,14 +5,12 @@
 namespace pup {
 
 class SimpleApp final : public CefApp {
-public:
+ public:
   SimpleApp() = default;
 
-  void OnBeforeCommandLineProcessing(
-      const CefString& process_type,
-      CefRefPtr<CefCommandLine> command_line) override;
+  void OnBeforeCommandLineProcessing(const CefString& process_type, CefRefPtr<CefCommandLine> command_line) override;
 
-private:
+ private:
   IMPLEMENT_REFCOUNTING(SimpleApp);
   DISALLOW_COPY_AND_ASSIGN(SimpleApp);
 };

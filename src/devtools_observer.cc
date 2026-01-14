@@ -11,8 +11,7 @@ void DevToolsObserver::EnsureAttached(CefRefPtr<CefBrowserHost> host) {
   }
 }
 
-bool DevToolsObserver::WaitForResult(int message_id,
-                                      std::chrono::milliseconds timeout) {
+bool DevToolsObserver::WaitForResult(int message_id, std::chrono::milliseconds timeout) {
   const auto deadline = std::chrono::steady_clock::now() + timeout;
 
   while (std::chrono::steady_clock::now() < deadline) {
@@ -29,12 +28,11 @@ bool DevToolsObserver::WaitForResult(int message_id,
   return false;
 }
 
-void DevToolsObserver::OnDevToolsMethodResult(
-    [[maybe_unused]] CefRefPtr<CefBrowser> browser,
-    int message_id,
-    bool success,
-    [[maybe_unused]] const void* result,
-    [[maybe_unused]] size_t result_size) {
+void DevToolsObserver::OnDevToolsMethodResult([[maybe_unused]] CefRefPtr<CefBrowser> browser,
+                                              int message_id,
+                                              bool success,
+                                              [[maybe_unused]] const void* result,
+                                              [[maybe_unused]] size_t result_size) {
   std::lock_guard lock(mutex_);
   results_[message_id] = success;
 }

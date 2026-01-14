@@ -19,11 +19,9 @@ bool Recorder::Initialize() {
   CefBrowserSettings browser_settings;
   browser_settings.windowless_frame_rate = config_.frame_rate;
 
-  CefBrowserHost::CreateBrowser(window_info, client_.get(), config_.url,
-                                browser_settings, nullptr, nullptr);
+  CefBrowserHost::CreateBrowser(window_info, client_.get(), config_.url, browser_settings, nullptr, nullptr);
 
-  return WaitForBrowser(std::chrono::seconds(config_.duration_seconds)) &&
-         WaitForPageLoad(std::chrono::seconds(10));
+  return WaitForBrowser(std::chrono::seconds(config_.duration_seconds)) && WaitForPageLoad(std::chrono::seconds(10));
 }
 
 bool Recorder::Record() {
@@ -43,9 +41,7 @@ void Recorder::Shutdown() {
     browser->GetHost()->CloseBrowser(true);
 
     const auto close_start = std::chrono::steady_clock::now();
-    while (client_->GetBrowser() &&
-           std::chrono::steady_clock::now() - close_start <
-               std::chrono::seconds(2)) {
+    while (client_->GetBrowser() && std::chrono::steady_clock::now() - close_start < std::chrono::seconds(2)) {
       CefDoMessageLoopWork();
     }
   }
@@ -93,8 +89,7 @@ bool Recorder::ConfigureVirtualTime() {
   virtual_time_params->SetBool("waitForNavigation", false);
   virtual_time_params->SetDouble("initialVirtualTime", 0.0);
 
-  const int vtime_id = client_->ExecuteDevToolsMethod(
-      "Emulation.setVirtualTimePolicy", virtual_time_params);
+  const int vtime_id = client_->ExecuteDevToolsMethod("Emulation.setVirtualTimePolicy", virtual_time_params);
 
   if (!client_->WaitForDevToolsResult(vtime_id, 2s)) {
     std::cerr << "Failed to set virtual time policy\n";
@@ -112,11 +107,9 @@ void Recorder::CaptureFrames() {
   int accumulated_ms = 0;
   int safety_iters = 0;
 
-  while (client_->GetFrameCount() < target_frames &&
-         safety_iters < target_frames * 3) {
+  while (client_->GetFrameCount() < target_frames && safety_iters < target_frames * 3) {
     const int frame = client_->GetFrameCount();
-    const int target_total_ms =
-        static_cast<int>(std::lround((frame + 1) * frame_interval_ms));
+    const int target_total_ms = static_cast<int>(std::lround((frame + 1) * frame_interval_ms));
     const int frame_budget_ms = std::max(1, target_total_ms - accumulated_ms);
     accumulated_ms += frame_budget_ms;
 
@@ -127,8 +120,7 @@ void Recorder::CaptureFrames() {
         advance_params->SetInt("budget", frame_budget_ms);
         advance_params->SetInt("maxVirtualTimeTaskStarvationCount", 500);
 
-        const int advance_id = client_->ExecuteDevToolsMethod(
-            "Emulation.setVirtualTimePolicy", advance_params);
+        const int advance_id = client_->ExecuteDevToolsMethod("Emulation.setVirtualTimePolicy", advance_params);
         client_->WaitForDevToolsResult(advance_id, 500ms);
 
         host->Invalidate(PET_VIEW);

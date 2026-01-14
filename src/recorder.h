@@ -1,9 +1,9 @@
 #pragma once
 
-#include "offscreen_client.h"
 #include <chrono>
 #include <optional>
 #include <string>
+#include "offscreen_client.h"
 
 namespace pup {
 
@@ -17,14 +17,14 @@ struct RecorderConfig {
 };
 
 class Recorder {
-public:
+ public:
   explicit Recorder(RecorderConfig config);
 
   bool Initialize();
   bool Record();
   void Shutdown();
 
-private:
+ private:
   bool WaitForBrowser(std::chrono::seconds timeout);
   bool WaitForPageLoad(std::chrono::seconds timeout);
   bool ConfigureVirtualTime();
