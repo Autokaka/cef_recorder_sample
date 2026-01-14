@@ -3,8 +3,8 @@
 #include <filesystem>
 #include <memory>
 #include <string>
-#include "frame_writer.h"
-#include "offscreen_client.h"
+#include "app/frame_writer.h"
+#include "app/offscreen_client.h"
 
 namespace pup {
 

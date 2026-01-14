@@ -5,27 +5,12 @@
 #include <filesystem>
 #include <iostream>
 #include <optional>
-#include <system_error>
-#include "cef_app.h"
-#include "recorder.h"
+#include "app/recorder.h"
+#include "shared/cef_app.h"
 
 namespace fs = std::filesystem;
 
 namespace {
-
-#if defined(OS_MAC)
-std::string GetFrameworkBinaryPath() {
-  return std::string(CEF_FRAMEWORK_PATH) + "/Chromium Embedded Framework";
-}
-#endif
-
-std::optional<fs::path> GetExecutablePath(const char* argv0) {
-  std::error_code ec;
-  if (auto path = fs::canonical(argv0, ec); !ec) {
-    return path;
-  }
-  return fs::absolute(argv0);
-}
 
 void PrintUsage(const char* program) {
   std::cout << "Usage: " << program << " --url=URL [options]\n"
@@ -85,14 +70,6 @@ pup::RecorderConfig ParseArgs(int argc, char* argv[]) {
 }
 
 bool InitializeCEF(int argc, char* argv[]) {
-#if defined(OS_MAC)
-  auto framework_binary = GetFrameworkBinaryPath();
-  if (cef_load_library(framework_binary.c_str()) != 1) {
-    std::cerr << "Failed to load CEF framework at " << framework_binary << '\n';
-    return false;
-  }
-#endif
-
   CefMainArgs main_args(argc, argv);
   CefRefPtr<CefApp> app = new pup::SimpleApp();
 
@@ -101,20 +78,9 @@ bool InitializeCEF(int argc, char* argv[]) {
     std::exit(exit_code);
   }
 
-  auto resources_dir = std::string(CEF_FRAMEWORK_PATH) + "/Resources";
-  auto exe_path = GetExecutablePath(argv[0]);
-  if (!exe_path) {
-    std::cerr << "Failed to determine executable path\n";
-    return false;
-  }
-
   CefSettings settings;
   settings.windowless_rendering_enabled = true;  // 必须开启
   settings.no_sandbox = true;
-  CefString(&settings.framework_dir_path) = CEF_FRAMEWORK_PATH;
-  CefString(&settings.browser_subprocess_path) = exe_path->u8string();
-  CefString(&settings.resources_dir_path) = resources_dir;
-  CefString(&settings.locales_dir_path) = resources_dir + "/locales";
 
   auto cache_root = fs::current_path() / "cef_cache_root";
   auto cache_path = cache_root / "default";
@@ -133,6 +99,15 @@ bool InitializeCEF(int argc, char* argv[]) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
+#if defined(OS_MAC)
+  // 加载 CEF 框架（必须在 main 开头，生命周期贯穿整个程序）
+  CefScopedLibraryLoader library_loader;
+  if (!library_loader.LoadInMain()) {
+    std::cerr << "Failed to load CEF framework\n";
+    return 1;
+  }
+#endif
+
   // 先解析参数（在 CEF 初始化之前，因为子进程也会调用 main）
   auto config = ParseArgs(argc, argv);
 
