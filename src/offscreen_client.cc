@@ -58,17 +58,6 @@ void OffscreenClient::OnLoadEnd(CefRefPtr<CefBrowser> browser,
   }
 }
 
-bool OffscreenClient::WaitForFrameCount(int target, std::chrono::milliseconds timeout) const {
-  const auto deadline = std::chrono::steady_clock::now() + timeout;
-  while (std::chrono::steady_clock::now() < deadline) {
-    if (frame_id_ >= target) {
-      return true;
-    }
-    CefDoMessageLoopWork();
-  }
-  return frame_id_ >= target;
-}
-
 int OffscreenClient::ExecuteDevToolsMethod(const std::string& method, CefRefPtr<CefDictionaryValue> params) {
   if (auto host = browser_ ? browser_->GetHost() : nullptr) {
     devtools_observer_->EnsureAttached(host);

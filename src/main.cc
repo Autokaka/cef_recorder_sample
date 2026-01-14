@@ -88,8 +88,8 @@ int main(int argc, char* argv[]) {
       .output_dir = fs::current_path() / "out",
       .width = 1280,
       .height = 720,
-      .duration_seconds = 10,
-      .frame_rate = 30,
+      .duration = 5,
+      .fps = 30,
   };
 
   pup::Recorder recorder(config);

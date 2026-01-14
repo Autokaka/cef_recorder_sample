@@ -12,13 +12,13 @@ void DevToolsObserver::EnsureAttached(CefRefPtr<CefBrowserHost> host) {
 }
 
 bool DevToolsObserver::WaitForResult(int message_id, std::chrono::milliseconds timeout) {
-  const auto deadline = std::chrono::steady_clock::now() + timeout;
+  auto deadline = std::chrono::steady_clock::now() + timeout;
 
   while (std::chrono::steady_clock::now() < deadline) {
     {
       std::lock_guard lock(mutex_);
       if (auto it = results_.find(message_id); it != results_.end()) {
-        const bool success = it->second;
+        auto success = it->second;
         results_.erase(it);
         return success;
       }

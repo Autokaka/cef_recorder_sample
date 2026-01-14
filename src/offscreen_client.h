@@ -55,7 +55,6 @@ class OffscreenClient final : public CefClient,
   bool IsLoadComplete() const { return load_complete_; }
   void SetRecordingEnabled(bool enabled) { recording_enabled_ = enabled; }
   int GetFrameCount() const { return frame_id_; }
-  bool WaitForFrameCount(int target, std::chrono::milliseconds timeout) const;
 
   int ExecuteDevToolsMethod(const std::string& method, CefRefPtr<CefDictionaryValue> params);
   bool WaitForDevToolsResult(int message_id, std::chrono::milliseconds timeout);
