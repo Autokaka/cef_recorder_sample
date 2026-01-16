@@ -110,6 +110,7 @@ def download_chromium(env, branch):
     "custom_deps": {{}},
     "custom_vars": {{
       "checkout_pgo_profiles": True,
+      "source_tarball": False,
     }},
   }},
 ]
@@ -162,6 +163,7 @@ def build_cef(chromium_src, env, plat, build_type):
         'ffmpeg_branding="Chrome"',
         f'target_cpu="{target_cpu}"',
         "use_sysroot=false",
+        "enable_widevine=true",
     ]
     
     if build_type == "Debug":
