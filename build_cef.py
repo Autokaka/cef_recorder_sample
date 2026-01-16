@@ -108,7 +108,9 @@ def download_chromium(env, branch):
     "url": "https://chromium.googlesource.com/chromium/src.git@{branch}",
     "managed": False,
     "custom_deps": {{}},
-    "custom_vars": {{}},
+    "custom_vars": {{
+      "checkout_pgo_profiles": True,
+    }},
   }},
 ]
 cache_dir = "{git_cache}"
@@ -149,30 +151,55 @@ def build_cef(chromium_src, env, plat, build_type):
     cef_dir = chromium_src / "cef"
     is_arm = "arm" in plat
     is_linux = "linux" in plat
+    is_mac = "macos" in plat
     
     target_cpu = "arm64" if is_arm else "x64"
-    is_debug = "true" if build_type == "Debug" else "false"
-    symbol_level = "2" if build_type == "Debug" else "0"
     
-    gn_args = [
+    # GN 构建参数（启用 PGO 以获得最佳性能）
+    gn_args_list = [
         "is_official_build=true",
         "proprietary_codecs=true",
-        "ffmpeg_branding=\\\"Chrome\\\"",
-        f"target_cpu=\\\"{target_cpu}\\\"",
-        f"is_debug={is_debug}",
-        f"symbol_level={symbol_level}",
+        'ffmpeg_branding="Chrome"',
+        f'target_cpu="{target_cpu}"',
         "use_sysroot=false",
     ]
+    
+    if build_type == "Debug":
+        gn_args_list.extend(["is_debug=true", "symbol_level=2"])
+    else:
+        gn_args_list.extend(["is_debug=false", "symbol_level=0"])
+    
     if is_linux:
-        gn_args.append("use_allocator=none")
+        gn_args_list.append("use_allocator=none")
     
+    gn_args_str = "\n".join(gn_args_list)
+    
+    # CEF 构建目录
     out_dir = f"out/{build_type}_GN_{plat}"
-    args_str = " ".join(gn_args)
-    run(f'gn gen {out_dir} --args="{args_str}"', cwd=chromium_src, env=env)
-    run(f"ninja -C {out_dir} cef", cwd=chromium_src, env=env)
     
-    distrib_flag = plat.replace("64", "").replace("macos", "macos")
-    run(f"python3 tools/make_distrib.py --ninja-build --{distrib_flag} --output-dir ../distrib/",
+    # 使用 CEF 的创建项目脚本
+    run(f"python3 cef/tools/gclient_hook.py", cwd=chromium_src, env=env, check=False)
+    
+    # 写入 GN args
+    args_file = chromium_src / out_dir / "args.gn"
+    args_file.parent.mkdir(parents=True, exist_ok=True)
+    args_file.write_text(gn_args_str)
+    
+    # 生成构建文件
+    run(f"gn gen {out_dir}", cwd=chromium_src, env=env)
+    
+    # 使用 CEF 的 sandbox target
+    run(f"ninja -C {out_dir} cefsimple", cwd=chromium_src, env=env)
+    
+    # 创建分发包
+    if is_mac:
+        distrib_flag = "mac64" if not is_arm else "macarm64"
+    elif is_linux:
+        distrib_flag = "linux64" if not is_arm else "linuxarm64"
+    else:
+        distrib_flag = plat
+    
+    run(f"python3 tools/make_distrib.py --ninja-build --{distrib_flag} --output-dir ../../distrib/",
         cwd=cef_dir, env=env)
 
 def copy_output(plat):
