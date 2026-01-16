@@ -157,13 +157,28 @@ def build_cef(chromium_src, env, plat, build_type):
     target_cpu = "arm64" if is_arm else "x64"
     
     # GN 构建参数（启用 PGO 以获得最佳性能）
+    # CEF BUILD.gn 中的 assert 检查要求以下参数必须为 true：
+    # - enable_print_preview
+    # - enable_widevine (及相关 CDM 参数)
+    # - toolkit_views
+    # - enable_rlz (当 enable_widevine 时)
     gn_args_list = [
         "is_official_build=true",
         "proprietary_codecs=true",
         'ffmpeg_branding="Chrome"',
         f'target_cpu="{target_cpu}"',
         "use_sysroot=false",
+        # CEF 必需参数
+        "enable_print_preview=true",
+        "toolkit_views=true",
+        # Widevine DRM 相关参数
         "enable_widevine=true",
+        "enable_cdm_host_verification=true",
+        "enable_cdm_storage_id=true",
+        'alternate_cdm_storage_id_key="pup_cef_cdm_storage"',
+        "enable_rlz=true",
+        # CEF 要求禁用 Chrome clang 插件
+        "clang_use_chrome_plugins=false",
     ]
     
     if build_type == "Debug":
