@@ -41,7 +41,8 @@ def get_latest_stable_versions():
                 if v["channel"] == "stable":
                     cef_version = v["cef_version"]
                     chromium_version = v["chromium_version"]
-                    cef_branch = cef_version.split(".")[0]
+                    # CEF 分支号是 Chromium 版本的第三段，如 143.0.7499.193 -> 7499
+                    cef_branch = chromium_version.split(".")[2]
                     print(f"Latest stable: CEF {cef_version} (branch {cef_branch}), Chromium {chromium_version}")
                     return cef_branch, chromium_version
     raise RuntimeError("No stable version found")
@@ -60,6 +61,8 @@ def setup_depot_tools():
     if not depot_tools_dir.exists():
         SRC_DIR.mkdir(parents=True, exist_ok=True)
         run(f"git clone {DEPOT_TOOLS_URL}", cwd=SRC_DIR)
+    # 确保 depot_tools 已初始化
+    run("./update_depot_tools", cwd=depot_tools_dir, check=False)
     return depot_tools_dir
 
 def setup_env(depot_tools_dir):
@@ -147,20 +150,25 @@ def build_cef(chromium_src, env, plat, build_type):
     is_arm = "arm" in plat
     is_linux = "linux" in plat
     
+    target_cpu = "arm64" if is_arm else "x64"
+    is_debug = "true" if build_type == "Debug" else "false"
+    symbol_level = "2" if build_type == "Debug" else "0"
+    
     gn_args = [
         "is_official_build=true",
         "proprietary_codecs=true",
-        "ffmpeg_branding=Chrome",
-        f'target_cpu="{"arm64" if is_arm else "x64"}"',
-        f'is_debug={"true" if build_type == "Debug" else "false"}',
-        f'symbol_level={"2" if build_type == "Debug" else "0"}',
+        "ffmpeg_branding=\\\"Chrome\\\"",
+        f"target_cpu=\\\"{target_cpu}\\\"",
+        f"is_debug={is_debug}",
+        f"symbol_level={symbol_level}",
         "use_sysroot=false",
     ]
     if is_linux:
         gn_args.append("use_allocator=none")
     
     out_dir = f"out/{build_type}_GN_{plat}"
-    run(f'gn gen {out_dir} --args="{" ".join(gn_args)}"', cwd=chromium_src, env=env)
+    args_str = " ".join(gn_args)
+    run(f'gn gen {out_dir} --args="{args_str}"', cwd=chromium_src, env=env)
     run(f"ninja -C {out_dir} cef", cwd=chromium_src, env=env)
     
     distrib_flag = plat.replace("64", "").replace("macos", "macos")
