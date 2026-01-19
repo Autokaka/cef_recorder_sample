@@ -88,21 +88,25 @@ def download_chromium(env, branch):
     gclient_file = chromium_git / ".gclient"
     git_cache = SRC_DIR / "git_cache"
     version_file = chromium_git / ".chromium_version"
+    sync_done_marker = chromium_git / ".sync_done"
     
     chromium_git.mkdir(parents=True, exist_ok=True)
     git_cache.mkdir(parents=True, exist_ok=True)
     
-    need_update = True
+    need_sync = True
     if version_file.exists():
         cached_version = version_file.read_text().strip()
         if cached_version == branch:
-            need_update = False
             print(f"Chromium version unchanged: {branch}")
+            # 检查是否已经成功 sync 过
+            if sync_done_marker.exists() and chromium_src.exists() and (chromium_src / "BUILD.gn").exists():
+                need_sync = False
+                print("Source already synced, skipping gclient sync")
         else:
             print(f"Chromium version changed: {cached_version} -> {branch}")
+            sync_done_marker.unlink(missing_ok=True)
     
-    if need_update:
-        gclient_content = f'''solutions = [
+    gclient_content = f'''solutions = [
   {{
     "name": "src",
     "url": "https://chromium.googlesource.com/chromium/src.git@{branch}",
@@ -116,39 +120,54 @@ def download_chromium(env, branch):
 ]
 cache_dir = "{git_cache}"
 '''
-        gclient_file.write_text(gclient_content)
-        version_file.write_text(branch)
-        print(f"Updated .gclient for Chromium {branch}")
+    gclient_file.write_text(gclient_content)
+    version_file.write_text(branch)
     
-    max_retries = 10
-    for attempt in range(1, max_retries + 1):
-        print(f"\n=== Sync attempt {attempt}/{max_retries} ===")
+    if need_sync:
+        max_retries = 10
+        for attempt in range(1, max_retries + 1):
+            print(f"\n=== Sync attempt {attempt}/{max_retries} ===")
+            
+            clean_bad_state(chromium_git)
+            
+            ret = run("gclient sync --nohooks --no-history -R -f",
+                      cwd=chromium_git, env=env, check=False)
+            
+            if ret == 0 and chromium_src.exists():
+                print("Chromium sync successful!")
+                break
+            
+            print(f"Sync failed (attempt {attempt}), retrying...")
+        else:
+            raise RuntimeError("Failed to sync chromium after max retries")
         
-        clean_bad_state(chromium_git)
-        
-        ret = run("gclient sync --nohooks --no-history -D -R -f",
-                  cwd=chromium_git, env=env, check=False)
-        
-        if ret == 0 and chromium_src.exists():
-            print("Chromium sync successful!")
-            break
-        
-        print(f"Sync failed (attempt {attempt}), retrying...")
-    else:
-        raise RuntimeError("Failed to sync chromium after max retries")
+        run("gclient runhooks", cwd=chromium_git, env=env)
+        sync_done_marker.touch()
     
-    run("gclient runhooks", cwd=chromium_git, env=env)
     return chromium_src
 
 def download_cef(chromium_src, branch):
     cef_dir = chromium_src / "cef"
+    cef_version_file = cef_dir / ".cef_branch"
+    
     if not cef_dir.exists():
         run(f"git clone {CEF_URL} cef", cwd=chromium_src)
-    run("git fetch --all", cwd=cef_dir)
-    run(f"git checkout {branch}", cwd=cef_dir)
+    
+    # 检查 CEF 分支是否需要更新
+    current_branch = ""
+    if cef_version_file.exists():
+        current_branch = cef_version_file.read_text().strip()
+    
+    if current_branch != branch:
+        run("git fetch --all", cwd=cef_dir)
+        run(f"git checkout {branch}", cwd=cef_dir)
+        cef_version_file.write_text(branch)
+    else:
+        print(f"CEF branch unchanged: {branch}")
+    
     return cef_dir
 
-def build_cef(chromium_src, env, plat, build_type):
+def build_cef(chromium_src, env, plat, build_type, clean=False, jobs=None):
     cef_dir = chromium_src / "cef"
     is_arm = "arm" in plat
     is_linux = "linux" in plat
@@ -179,6 +198,8 @@ def build_cef(chromium_src, env, plat, build_type):
         "enable_rlz=true",
         # CEF 要求禁用 Chrome clang 插件
         "clang_use_chrome_plugins=false",
+        # 减少链接时内存使用
+        "use_thin_lto=false",  # ThinLTO 省时间但吃内存
     ]
     
     if build_type == "Debug":
@@ -193,20 +214,39 @@ def build_cef(chromium_src, env, plat, build_type):
     
     # CEF 构建目录
     out_dir = f"out/{build_type}_GN_{plat}"
+    out_path = chromium_src / out_dir
     
-    # 使用 CEF 的创建项目脚本
-    run(f"python3 cef/tools/gclient_hook.py", cwd=chromium_src, env=env, check=False)
+    # 清理构建目录（如果指定 --clean）
+    if clean and out_path.exists():
+        print(f"Cleaning {out_path}...")
+        shutil.rmtree(out_path)
     
-    # 写入 GN args
-    args_file = chromium_src / out_dir / "args.gn"
+    # 写入 GN args（只在内容变化时写入）
+    args_file = out_path / "args.gn"
     args_file.parent.mkdir(parents=True, exist_ok=True)
-    args_file.write_text(gn_args_str)
     
-    # 生成构建文件
-    run(f"gn gen {out_dir}", cwd=chromium_src, env=env)
+    current_args = args_file.read_text() if args_file.exists() else ""
+    args_changed = current_args.strip() != gn_args_str.strip()
+    
+    if args_changed:
+        args_file.write_text(gn_args_str)
+        print("args.gn updated")
+    
+    # 检查是否需要运行 gclient_hook.py 和 gn gen
+    # gclient_hook.py 会 patch chromium 源码，每次运行都会改变文件时间戳导致重新编译
+    build_ninja = out_path / "build.ninja"
+    need_gen = args_changed or not build_ninja.exists()
+    
+    if need_gen:
+        # 只在首次或 args 变化时运行 gclient_hook.py
+        run(f"python3 cef/tools/gclient_hook.py", cwd=chromium_src, env=env, check=False)
+        run(f"gn gen {out_dir}", cwd=chromium_src, env=env)
+    else:
+        print("Build config unchanged, skipping gn gen (incremental build)")
     
     # 使用 CEF 的 sandbox target
-    run(f"ninja -C {out_dir} cefsimple", cwd=chromium_src, env=env)
+    jobs_flag = f"-j {jobs}" if jobs else ""
+    run(f"ninja {jobs_flag} -C {out_dir} cefsimple", cwd=chromium_src, env=env)
     
     # 创建分发包
     if is_mac:
@@ -245,6 +285,9 @@ def main():
     parser.add_argument("--build-type", default="Release", choices=["Release", "Debug"])
     parser.add_argument("--platform", default=None, choices=SUPPORTED_PLATFORMS + ["all"],
                         help="Target platform (default: host platform)")
+    parser.add_argument("--clean", action="store_true", help="Clean build output before building")
+    parser.add_argument("-j", "--jobs", type=int, default=None,
+                        help="Number of parallel jobs (default: auto, reduce if OOM)")
     args = parser.parse_args()
     
     if args.branch and args.chromium_branch:
@@ -272,7 +315,7 @@ def main():
         print(f"\n{'='*50}")
         print(f"Building for {plat}")
         print(f"{'='*50}\n")
-        build_cef(chromium_src, env, plat, args.build_type)
+        build_cef(chromium_src, env, plat, args.build_type, clean=args.clean, jobs=args.jobs)
         copy_output(plat)
     
     print(f"\nBuild complete!")
