@@ -33,18 +33,27 @@ def fetch_json(url):
         return json.loads(resp.read().decode())
 
 def get_latest_stable_versions():
+    """获取最新的 stable 版本（按版本号排序，而不是按列表顺序）"""
     data = fetch_json(CEF_INDEX_URL)
     for plat_key in ["linux64", "macosx64"]:
         if plat_key in data:
             versions = data[plat_key]["versions"]
-            for v in versions:
-                if v["channel"] == "stable":
-                    cef_version = v["cef_version"]
-                    chromium_version = v["chromium_version"]
-                    # CEF 分支号是 Chromium 版本的第三段，如 143.0.7499.193 -> 7499
-                    cef_branch = chromium_version.split(".")[2]
-                    print(f"Latest stable: CEF {cef_version} (branch {cef_branch}), Chromium {chromium_version}")
-                    return cef_branch, chromium_version
+            # 收集所有 stable 版本
+            stable_versions = [v for v in versions if v["channel"] == "stable"]
+            if not stable_versions:
+                continue
+            # 按 Chromium 主版本号排序，取最大的
+            stable_versions.sort(
+                key=lambda v: int(v["chromium_version"].split(".")[0]),
+                reverse=True
+            )
+            v = stable_versions[0]
+            cef_version = v["cef_version"]
+            chromium_version = v["chromium_version"]
+            # CEF 分支号是 Chromium 版本的第三段，如 143.0.7499.193 -> 7499
+            cef_branch = chromium_version.split(".")[2]
+            print(f"Latest stable: CEF {cef_version} (branch {cef_branch}), Chromium {chromium_version}")
+            return cef_branch, chromium_version
     raise RuntimeError("No stable version found")
 
 def get_host_platform():
@@ -246,17 +255,13 @@ def build_cef(chromium_src, env, plat, build_type, clean=False, jobs=None):
     
     # 使用 CEF 的 sandbox target
     jobs_flag = f"-j {jobs}" if jobs else ""
-    run(f"ninja {jobs_flag} -C {out_dir} cefsimple", cwd=chromium_src, env=env)
+    run(f"ninja {jobs_flag} -C {out_dir} cef", cwd=chromium_src, env=env)
     
     # 创建分发包
-    if is_mac:
-        distrib_flag = "mac64" if not is_arm else "macarm64"
-    elif is_linux:
-        distrib_flag = "linux64" if not is_arm else "linuxarm64"
-    else:
-        distrib_flag = plat
+    # make_distrib.py 使用 --x64-build 或 --arm64-build
+    arch_flag = "--arm64-build" if is_arm else "--x64-build"
     
-    run(f"python3 tools/make_distrib.py --ninja-build --{distrib_flag} --output-dir ../../distrib/",
+    run(f"python3 tools/make_distrib.py --ninja-build {arch_flag} --output-dir ../../distrib/",
         cwd=cef_dir, env=env)
 
 def copy_output(plat):
